@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.saoclicker.R
 import com.example.saoclicker.SAOClickerApplication
 import com.example.saoclicker.adapters.AchievementAdapter
 import com.example.saoclicker.databinding.ActivityAchievementsBinding
