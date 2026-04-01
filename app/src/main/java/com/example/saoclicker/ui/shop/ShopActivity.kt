@@ -3,12 +3,11 @@ package com.example.saoclicker.ui.shop
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.example.saoclicker.R
 import com.example.saoclicker.SAOClickerApplication
 import com.example.saoclicker.adapters.ShopAdapter
 import com.example.saoclicker.databinding.ActivityShopBinding
-import kotlinx.coroutines.launch
 
 class ShopActivity : AppCompatActivity() {
 
@@ -42,7 +41,6 @@ class ShopActivity : AppCompatActivity() {
             binding.tvCol.text = player.col.toString()
         }
 
-        // показываем тосты об успехе/ошибке
         viewModel.toastMessage.observe(this) { message ->
             if (message.isNotBlank()) {
                 android.widget.Toast.makeText(this, message, android.widget.Toast.LENGTH_SHORT).show()
