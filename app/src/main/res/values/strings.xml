@@ -9,4 +9,15 @@
     <string name="shop">Магазин</string>
     <string name="stats">Характеристики</string>
     <string name="achievements">Достижения</string>
+    <string name="strength">Сила</string>
+    <string name="agility">Ловкость</string>
+    <string name="vitality">Выносливость</string>
+    <string name="attack_speed">Скорость атаки</string>
+    <string name="price">Цена</string>
+    <string name="buy">Купить</string>
+    <string name="owned">Влад.:</string>
+    <string name="reward_col">Награда: %d кол</string>
+    <string name="reward_exp">Награда: %d опыта</string>
+    <string name="achievement_progress">Прогресс: %d / %d</string>
+    <string name="completed">Выполнено</string>
 </resources>
