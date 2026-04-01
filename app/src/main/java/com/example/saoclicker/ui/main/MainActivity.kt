@@ -3,6 +3,7 @@ package com.example.saoclicker.ui.main
 import android.animation.ValueAnimator
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -95,6 +96,11 @@ class MainActivity : AppCompatActivity() {
             }
         }
         animator.start()
-        animator.doOnEnd { (damageText.parent as ViewGroup).removeView(damageText) }
+        // замена doOnEnd
+        animator.addListener(object : android.animation.AnimatorListenerAdapter() {
+            override fun onAnimationEnd(animation: android.animation.Animator) {
+                (damageText.parent as? ViewGroup)?.removeView(damageText)
+            }
+        })
     }
 }
