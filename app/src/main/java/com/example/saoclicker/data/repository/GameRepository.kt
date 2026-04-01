@@ -7,33 +7,31 @@ import kotlinx.coroutines.flow.first
 
 class GameRepository(private val db: AppDatabase) {
 
-    // Player
     fun getPlayer(): Flow<Player> = db.playerDao().getPlayer()
     suspend fun updatePlayer(player: Player) = db.playerDao().update(player)
 
-    // Monsters
     fun getAllMonsters(): Flow<List<Monster>> = db.monsterDao().getAllMonsters()
     suspend fun getCurrentMonster(): Monster? {
         val monsters = db.monsterDao().getAllMonsters().first()
+        // Берём первого, у которого HP > 0, или первого в списке (если все мертвы)
         return monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
     }
     suspend fun updateMonster(monster: Monster) = db.monsterDao().update(monster)
 
-    // Upgrades
     fun getAllUpgrades(): Flow<List<Upgrade>> = db.upgradeDao().getAllUpgrades()
     suspend fun updateUpgrade(upgrade: Upgrade) = db.upgradeDao().update(upgrade)
 
-    // Achievements
     fun getAllAchievements(): Flow<List<Achievement>> = db.achievementDao().getAllAchievements()
     suspend fun updateAchievement(achievement: Achievement) = db.achievementDao().update(achievement)
 
-    // Инициализация тестовыми данными (при первом запуске)
     suspend fun initDatabase() {
+        // Игрок
         val player = db.playerDao().getPlayer().first()
         if (player.id == 0) {
-            // Нет игрока – создаём
             db.playerDao().insert(Player())
         }
+
+        // Монстры
         val monsters = db.monsterDao().getAllMonsters().first()
         if (monsters.isEmpty()) {
             val monsterList = listOf(
@@ -47,6 +45,8 @@ class GameRepository(private val db: AppDatabase) {
             )
             monsterList.forEach { db.monsterDao().insert(it) }
         }
+
+        // Улучшения
         val upgrades = db.upgradeDao().getAllUpgrades().first()
         if (upgrades.isEmpty()) {
             val upgradeList = listOf(
@@ -55,6 +55,8 @@ class GameRepository(private val db: AppDatabase) {
             )
             upgradeList.forEach { db.upgradeDao().insert(it) }
         }
+
+        // Достижения
         val achievements = db.achievementDao().getAllAchievements().first()
         if (achievements.isEmpty()) {
             val achievementList = listOf(
