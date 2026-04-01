@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">SAO Clicker</string>
+    <string name="level">Уровень</string>
+    <string name="exp">Опыт</string>
+    <string name="col">Кол</string>
+    <string name="skill_points">Очки навыков</string>
+    <string name="damage">Урон: %d</string>
+    <string name="hp">HP</string>
+    <string name="shop">Магазин</string>
+    <string name="stats">Характеристики</string>
+    <string name="achievements">Достижения</string>
+</resources>
