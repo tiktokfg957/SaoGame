@@ -1,0 +1,23 @@
+package com.example.saoclicker
+
+import android.app.Application
+import androidx.lifecycle.lifecycleScope
+import com.example.saoclicker.data.database.AppDatabase
+import com.example.saoclicker.data.repository.GameRepository
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+
+class SAOClickerApplication : Application() {
+    val database by lazy { AppDatabase.getDatabase(this) }
+    val repository by lazy { GameRepository(database) }
+
+    override fun onCreate() {
+        super.onCreate()
+        // Инициализируем базу данных в фоне
+        Thread {
+            runBlocking {
+                repository.initDatabase()
+            }
+        }.start()
+    }
+}
