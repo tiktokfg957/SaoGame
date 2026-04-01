@@ -1,12 +1,9 @@
 package com.example.saoclicker.data.repository
 
-import com.example.saoclicker.data.database.*
+import com.example.saoclicker.data.database.AppDatabase
 import com.example.saoclicker.data.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
-import javax.inject.Inject
 
 class GameRepository(private val db: AppDatabase) {
 
@@ -55,7 +52,6 @@ class GameRepository(private val db: AppDatabase) {
             val upgradeList = listOf(
                 Upgrade(name = "Улучшение меча", description = "Увеличивает урон на +5", basePrice = 100, currentPrice = 100, effect = "weapon", effectValue = 5),
                 Upgrade(name = "Автокликер", description = "Наносит 10 урона каждую секунду", basePrice = 500, currentPrice = 500, effect = "autoClicker", effectValue = 10)
-                // можно добавить зелья, но для простоты пока так
             )
             upgradeList.forEach { db.upgradeDao().insert(it) }
         }
