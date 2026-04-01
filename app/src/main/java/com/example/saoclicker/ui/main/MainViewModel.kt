@@ -124,7 +124,7 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
         }
     }
 
-    private fun checkLevelUp(player: Player) {
+    private suspend fun checkLevelUp(player: Player) {
         var level = player.level
         var exp = player.experience
         while (exp >= 100 * level) { // формула опыта для уровня
@@ -139,24 +139,22 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
         }
     }
 
-    private fun checkAchievements(type: String, value: Int) {
-        viewModelScope.launch {
-            val achievements = repository.getAllAchievements().asLiveData().value ?: return@launch
-            achievements.filter { !it.isCompleted && it.requirementType == type }.forEach { ach ->
-                val newProgress = ach.currentProgress + value
-                if (newProgress >= ach.requirementValue) {
-                    ach.isCompleted = true
-                    ach.currentProgress = ach.requirementValue
-                    // даём награду
-                    val player = player.value ?: return@launch
-                    player.col += ach.rewardCol
-                    player.experience += ach.rewardExp
-                    repository.updatePlayer(player)
-                } else {
-                    ach.currentProgress = newProgress
-                }
-                repository.updateAchievement(ach)
+    private suspend fun checkAchievements(type: String, value: Int) {
+        val achievements = repository.getAllAchievements().asLiveData().value ?: return
+        achievements.filter { !it.isCompleted && it.requirementType == type }.forEach { ach ->
+            val newProgress = ach.currentProgress + value
+            if (newProgress >= ach.requirementValue) {
+                ach.isCompleted = true
+                ach.currentProgress = ach.requirementValue
+                // даём награду
+                val player = player.value ?: return@forEach
+                player.col += ach.rewardCol
+                player.experience += ach.rewardExp
+                repository.updatePlayer(player)
+            } else {
+                ach.currentProgress = newProgress
             }
+            repository.updateAchievement(ach)
         }
     }
 
