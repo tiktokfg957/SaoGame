@@ -3,6 +3,7 @@ package com.example.saoclicker.ui.stats
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
+import com.example.saoclicker.R
 import com.example.saoclicker.SAOClickerApplication
 import com.example.saoclicker.databinding.ActivityStatsBinding
 
