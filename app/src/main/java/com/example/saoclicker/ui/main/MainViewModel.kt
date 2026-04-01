@@ -9,13 +9,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.saoclicker.data.model.Monster
 import com.example.saoclicker.data.model.Player
 import com.example.saoclicker.data.repository.GameRepository
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import java.util.Random
 
 class MainViewModel(private val repository: GameRepository) : ViewModel() {
 
     val player: LiveData<Player> = repository.getPlayer().asLiveData()
-    val allMonsters = repository.getAllMonsters().asLiveData()
 
     private val _currentMonster = MutableLiveData<Monster?>()
     val currentMonster: LiveData<Monster?> = _currentMonster
@@ -25,14 +25,16 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            val monsters = repository.getAllMonsters().asLiveData()
-            // обновление текущего монстра (берём первого с hp>0)
-            repository.getAllMonsters().asLiveData().observeForever { monsterList ->
-                val active = monsterList.firstOrNull { it.currentHp > 0 } ?: monsterList.firstOrNull()
+            // Следим за списком монстров и выбираем активного
+            repository.getAllMonsters().collect { monsters ->
+                val active = monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
                 _currentMonster.postValue(active)
             }
-            // подписываемся на апгрейды для оружия
-            repository.getAllUpgrades().asLiveData().observeForever { upgrades ->
+        }
+
+        viewModelScope.launch {
+            // Следим за апгрейдами для оружия
+            repository.getAllUpgrades().collect { upgrades ->
                 val weapon = upgrades.find { it.effect == "weapon" }
                 _weaponBonus.postValue(weapon?.effectValue ?: 0)
             }
@@ -59,32 +61,17 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
                 monster.currentHp = 0
                 repository.updateMonster(monster)
                 // награда
-                val newCol = player.col + monster.rewardCol
-                val newExp = player.experience + monster.rewardExp
-                // обновляем игрока
-                player.col = newCol
-                player.experience = newExp
+                player.col += monster.rewardCol
+                player.experience += monster.rewardExp
                 // проверка уровня
                 checkLevelUp(player)
                 repository.updatePlayer(player)
-
-                // переключение на следующего монстра
-                val monsters = repository.getAllMonsters().asLiveData().value ?: emptyList()
-                val next = monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
-                if (next != null) {
-                    // сброс HP, если это первый монстр (новый цикл)
-                    if (next.currentHp <= 0) {
-                        next.currentHp = next.maxHp
-                        repository.updateMonster(next)
-                    }
-                    _currentMonster.postValue(next)
-                }
-                // проверка достижений
+                // Проверка достижений
                 checkAchievements("kill", 1)
+                // Переключение на следующего монстра (он автоматически подхватится из Flow)
             } else {
                 monster.currentHp = newHp
                 repository.updateMonster(monster)
-                _currentMonster.postValue(monster)
             }
         }
     }
@@ -92,33 +79,21 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
     fun performAutoClick() {
         viewModelScope.launch {
             val player = player.value ?: return@launch
-            val autoDamage = (player.attackSpeed / 10) * 10 // каждые 10 очков дают 10 урона
+            val autoDamage = (player.attackSpeed / 10) * 10
             if (autoDamage > 0) {
                 val monster = _currentMonster.value ?: return@launch
                 val newHp = monster.currentHp - autoDamage
                 if (newHp <= 0) {
-                    // аналогично kill, но без дополнительных вызовов
                     monster.currentHp = 0
                     repository.updateMonster(monster)
                     player.col += monster.rewardCol
                     player.experience += monster.rewardExp
                     checkLevelUp(player)
                     repository.updatePlayer(player)
-
-                    val monsters = repository.getAllMonsters().asLiveData().value ?: emptyList()
-                    val next = monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
-                    if (next != null) {
-                        if (next.currentHp <= 0) {
-                            next.currentHp = next.maxHp
-                            repository.updateMonster(next)
-                        }
-                        _currentMonster.postValue(next)
-                    }
                     checkAchievements("kill", 1)
                 } else {
                     monster.currentHp = newHp
                     repository.updateMonster(monster)
-                    _currentMonster.postValue(monster)
                 }
             }
         }
@@ -127,7 +102,7 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
     private suspend fun checkLevelUp(player: Player) {
         var level = player.level
         var exp = player.experience
-        while (exp >= 100 * level) { // формула опыта для уровня
+        while (exp >= 100 * level) {
             exp -= 100 * level
             level++
             player.skillPoints += 1
@@ -146,7 +121,6 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
             if (newProgress >= ach.requirementValue) {
                 ach.isCompleted = true
                 ach.currentProgress = ach.requirementValue
-                // даём награду
                 val player = player.value ?: return@forEach
                 player.col += ach.rewardCol
                 player.experience += ach.rewardExp
