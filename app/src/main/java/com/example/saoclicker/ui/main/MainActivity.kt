@@ -96,7 +96,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
         animator.start()
-        // замена doOnEnd
         animator.addListener(object : android.animation.AnimatorListenerAdapter() {
             override fun onAnimationEnd(animation: android.animation.Animator) {
                 (damageText.parent as? ViewGroup)?.removeView(damageText)
