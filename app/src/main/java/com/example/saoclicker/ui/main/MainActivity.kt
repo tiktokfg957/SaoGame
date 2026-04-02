@@ -54,10 +54,14 @@ class MainActivity : AppCompatActivity() {
             binding.tvDamage.text = getString(R.string.damage, viewModel.calculateDamage())
         }
 
-        binding.root.setOnClickListener {
+        // Обработка клика по кнопке АТАКА
+        binding.btnAttack.setOnClickListener {
             viewModel.performClick()
-            showClickEffect(it.x, it.y)
+            showClickEffect(binding.btnAttack.x + binding.btnAttack.width/2, binding.btnAttack.y + binding.btnAttack.height/2)
         }
+
+        // Также можно оставить клик по всему экрану (опционально)
+        // binding.root.setOnClickListener { ... }
 
         binding.btnShop.setOnClickListener {
             startActivity(android.content.Intent(this, ShopActivity::class.java))
@@ -82,15 +86,15 @@ class MainActivity : AppCompatActivity() {
         damageText.text = "+${viewModel.calculateDamage()}"
         damageText.setTextColor(resources.getColor(R.color.white, null))
         damageText.textSize = 24f
-        damageText.x = x
-        damageText.y = y
+        damageText.x = x - 50f
+        damageText.y = y - 50f
         (window.decorView as ViewGroup).addView(damageText)
 
         val animator = ValueAnimator.ofFloat(1f, 0f).apply {
             duration = 800
             addUpdateListener {
                 damageText.alpha = it.animatedValue as Float
-                damageText.translationY -= 50 * it.animatedFraction
+                damageText.translationY -= 80 * it.animatedFraction
             }
         }
         animator.start()
