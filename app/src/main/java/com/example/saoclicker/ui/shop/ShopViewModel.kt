@@ -6,8 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import com.example.saoclicker.data.model.Upgrade
 import com.example.saoclicker.data.repository.GameRepository
 import kotlinx.coroutines.launch
+import kotlin.math.pow
 
 class ShopViewModel(private val repository: GameRepository) : ViewModel() {
 
@@ -17,25 +19,27 @@ class ShopViewModel(private val repository: GameRepository) : ViewModel() {
     private val _toastMessage = MutableLiveData("")
     val toastMessage: LiveData<String> = _toastMessage
 
-    fun buyUpgrade(upgrade: com.example.saoclicker.data.model.Upgrade) {
+    fun buyUpgrade(upgrade: Upgrade) {
         viewModelScope.launch {
             val currentPlayer = player.value ?: return@launch
             if (currentPlayer.col >= upgrade.currentPrice) {
-                // списываем кол
                 currentPlayer.col -= upgrade.currentPrice
                 repository.updatePlayer(currentPlayer)
 
-                // увеличиваем ownedCount и обновляем цену
                 upgrade.ownedCount += 1
-                upgrade.currentPrice = (upgrade.basePrice * (1 + 0.2 * upgrade.ownedCount)).toInt()
+                // Плавный рост цены: basePrice * (1.15 ^ ownedCount)
+                upgrade.currentPrice = (upgrade.basePrice * 1.15.pow(upgrade.ownedCount)).toInt()
                 repository.updateUpgrade(upgrade)
 
-                // если это автокликер, увеличиваем скорость атаки
-                if (upgrade.effect == "autoClicker") {
-                    currentPlayer.attackSpeed += upgrade.effectValue
-                    repository.updatePlayer(currentPlayer)
+                when (upgrade.effect) {
+                    "weapon" -> {
+                        // бонус уже отслеживается через weaponBonus
+                    }
+                    "autoClicker" -> {
+                        currentPlayer.attackSpeed += upgrade.effectValue
+                        repository.updatePlayer(currentPlayer)
+                    }
                 }
-                // для меча ничего не делаем, бонус пересчитается в MainViewModel
                 _toastMessage.value = "Куплено: ${upgrade.name}"
             } else {
                 _toastMessage.value = "Недостаточно кол"
