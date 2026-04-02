@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.saoclicker.data.model.Monster
 import com.example.saoclicker.data.model.Player
 import com.example.saoclicker.data.repository.GameRepository
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Random
 
@@ -17,31 +17,33 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
 
     val player: LiveData<Player> = repository.getPlayer().asLiveData()
 
-    private val _currentMonster = MutableStateFlow<Monster?>(null)
-    val currentMonster: StateFlow<Monster?> = _currentMonster.asStateFlow()
+    private val _currentMonster = MutableLiveData<Monster?>()
+    val currentMonster: LiveData<Monster?> = _currentMonster
 
-    private val _weaponBonus = MutableStateFlow(0)
-    val weaponBonus: StateFlow<Int> = _weaponBonus.asStateFlow()
+    private val _weaponBonus = MutableLiveData(0)
+    val weaponBonus: LiveData<Int> = _weaponBonus
 
     init {
         viewModelScope.launch {
             repository.getAllMonsters().collect { monsters ->
                 val active = monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
-                _currentMonster.value = active
+                _currentMonster.postValue(active)
             }
         }
 
         viewModelScope.launch {
             repository.getAllUpgrades().collect { upgrades ->
                 val weapon = upgrades.find { it.effect == "weapon" }
-                _weaponBonus.value = weapon?.effectValue ?: 0
+                // Бонус = ownedCount * effectValue (каждый уровень даёт +effectValue урона)
+                val bonus = (weapon?.ownedCount ?: 0) * (weapon?.effectValue ?: 0)
+                _weaponBonus.postValue(bonus)
             }
         }
     }
 
     fun calculateDamage(): Int {
         val player = player.value ?: return 1
-        val bonus = _weaponBonus.value
+        val bonus = _weaponBonus.value ?: 0
         val critChance = (player.agility / 10).coerceAtMost(50)
         val isCrit = Random().nextInt(100) < critChance
         val baseDamage = player.strength + bonus
@@ -72,6 +74,7 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
     fun performAutoClick() {
         viewModelScope.launch {
             val player = player.value ?: return@launch
+            // Автоурон от скорости атаки (каждые 10 очков = 10 урона)
             val autoDamage = (player.attackSpeed / 10) * 10
             if (autoDamage > 0) {
                 val monster = _currentMonster.value ?: return@launch
