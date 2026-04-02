@@ -6,7 +6,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
-import com.example.saoclicker.data.model.Upgrade
 import com.example.saoclicker.data.repository.GameRepository
 import kotlinx.coroutines.launch
 
@@ -18,25 +17,25 @@ class ShopViewModel(private val repository: GameRepository) : ViewModel() {
     private val _toastMessage = MutableLiveData("")
     val toastMessage: LiveData<String> = _toastMessage
 
-    fun buyUpgrade(upgrade: Upgrade) {
+    fun buyUpgrade(upgrade: com.example.saoclicker.data.model.Upgrade) {
         viewModelScope.launch {
             val currentPlayer = player.value ?: return@launch
             if (currentPlayer.col >= upgrade.currentPrice) {
+                // списываем кол
                 currentPlayer.col -= upgrade.currentPrice
                 repository.updatePlayer(currentPlayer)
 
+                // увеличиваем ownedCount и обновляем цену
                 upgrade.ownedCount += 1
                 upgrade.currentPrice = (upgrade.basePrice * (1 + 0.2 * upgrade.ownedCount)).toInt()
                 repository.updateUpgrade(upgrade)
 
-                // Применяем эффект (для автокликера увеличиваем скорость атаки)
-                when (upgrade.effect) {
-                    "autoClicker" -> {
-                        currentPlayer.attackSpeed += upgrade.effectValue
-                        repository.updatePlayer(currentPlayer)
-                    }
-                    // weapon bonus обрабатывается автоматически через Flow в MainViewModel
+                // если это автокликер, увеличиваем скорость атаки
+                if (upgrade.effect == "autoClicker") {
+                    currentPlayer.attackSpeed += upgrade.effectValue
+                    repository.updatePlayer(currentPlayer)
                 }
+                // для меча ничего не делаем, бонус пересчитается в MainViewModel
                 _toastMessage.value = "Куплено: ${upgrade.name}"
             } else {
                 _toastMessage.value = "Недостаточно кол"
