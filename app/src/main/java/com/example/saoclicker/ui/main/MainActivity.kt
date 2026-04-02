@@ -45,8 +45,6 @@ class MainActivity : AppCompatActivity() {
                 binding.progressBarHp.max = it.maxHp
                 binding.progressBarHp.progress = it.currentHp
                 binding.tvHp.text = "${it.currentHp}/${it.maxHp}"
-            } ?: run {
-                binding.tvMonsterName.text = "Загрузка монстра..."
             }
         }
 
@@ -54,15 +52,17 @@ class MainActivity : AppCompatActivity() {
             binding.tvDamage.text = getString(R.string.damage, viewModel.calculateDamage())
         }
 
-        // Атака по нажатию на круглую кнопку
-        binding.attackButton.setOnClickListener {
+        // Атака по нажатию на FAB
+        binding.fabAttack.setOnClickListener {
             viewModel.performClick()
-            showClickEffect(binding.attackButton.x + binding.attackButton.width/2,
-                binding.attackButton.y + binding.attackButton.height/2)
+            showClickEffect(binding.fabAttack.x, binding.fabAttack.y)
         }
 
-        // Также можно оставить атаку по всему экрану (опционально)
-        // binding.root.setOnClickListener { ... } – закомментируем, чтобы не мешать кнопкам
+        // Также можно оставить клик по всему экрану (опционально)
+        binding.root.setOnClickListener {
+            viewModel.performClick()
+            showClickEffect(it.x, it.y)
+        }
 
         binding.btnShop.setOnClickListener {
             startActivity(android.content.Intent(this, ShopActivity::class.java))
