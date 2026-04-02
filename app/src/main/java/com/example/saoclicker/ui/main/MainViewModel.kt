@@ -30,24 +30,24 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
                 _currentMonster.postValue(active)
             }
         }
-
         viewModelScope.launch {
             repository.getAllUpgrades().collect { upgrades ->
                 val weapon = upgrades.find { it.effect == "weapon" }
-                // Бонус = ownedCount * effectValue (каждый уровень даёт +effectValue урона)
-                val bonus = (weapon?.ownedCount ?: 0) * (weapon?.effectValue ?: 0)
-                _weaponBonus.postValue(bonus)
+                _weaponBonus.postValue(weapon?.effectValue ?: 0)
             }
         }
     }
 
     fun calculateDamage(): Int {
         val player = player.value ?: return 1
-        val bonus = _weaponBonus.value ?: 0
+        val base = player.strength
+        val agilityBonus = (player.agility * 0.1).toInt()   // +10% за ед. ловкости
+        val vitalityBonus = (player.vitality * 0.05).toInt() // +5% за ед. выносливости
+        val weapon = _weaponBonus.value ?: 0
+        val rawDamage = base + agilityBonus + vitalityBonus + weapon
         val critChance = (player.agility / 10).coerceAtMost(50)
         val isCrit = Random().nextInt(100) < critChance
-        val baseDamage = player.strength + bonus
-        return if (isCrit) baseDamage * 2 else baseDamage
+        return if (isCrit) rawDamage * 2 else rawDamage
     }
 
     fun performClick() {
@@ -57,13 +57,7 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
             val damage = calculateDamage()
             val newHp = monster.currentHp - damage
             if (newHp <= 0) {
-                monster.currentHp = 0
-                repository.updateMonster(monster)
-                player.col += monster.rewardCol
-                player.experience += monster.rewardExp
-                checkLevelUp(player)
-                repository.updatePlayer(player)
-                checkAchievements("kill", 1)
+                killMonster(monster, player)
             } else {
                 monster.currentHp = newHp
                 repository.updateMonster(monster)
@@ -74,25 +68,53 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
     fun performAutoClick() {
         viewModelScope.launch {
             val player = player.value ?: return@launch
-            // Автоурон от скорости атаки (каждые 10 очков = 10 урона)
             val autoDamage = (player.attackSpeed / 10) * 10
-            if (autoDamage > 0) {
-                val monster = _currentMonster.value ?: return@launch
-                val newHp = monster.currentHp - autoDamage
-                if (newHp <= 0) {
-                    monster.currentHp = 0
-                    repository.updateMonster(monster)
-                    player.col += monster.rewardCol
-                    player.experience += monster.rewardExp
-                    checkLevelUp(player)
-                    repository.updatePlayer(player)
-                    checkAchievements("kill", 1)
-                } else {
-                    monster.currentHp = newHp
-                    repository.updateMonster(monster)
-                }
+            if (autoDamage <= 0) return@launch
+            val monster = _currentMonster.value ?: return@launch
+            val newHp = monster.currentHp - autoDamage
+            if (newHp <= 0) {
+                killMonster(monster, player)
+            } else {
+                monster.currentHp = newHp
+                repository.updateMonster(monster)
             }
         }
+    }
+
+    private suspend fun killMonster(monster: Monster, player: Player) {
+        monster.currentHp = 0
+        repository.updateMonster(monster)
+        player.col += monster.rewardCol
+        player.experience += monster.rewardExp
+        checkLevelUp(player)
+        repository.updatePlayer(player)
+        checkAchievements("kill", 1)
+        spawnNextMonster()
+    }
+
+    private suspend fun spawnNextMonster() {
+        val currentPlayer = player.value ?: return
+        val allMonsters = repository.getAllMonsters().first()
+        // Монстры отсортированы по уровню, выбираем следующего
+        val currentMonster = _currentMonster.value
+        val nextMonster = if (currentMonster == null) allMonsters.firstOrNull()
+        else {
+            val index = allMonsters.indexOfFirst { it.id == currentMonster.id }
+            if (index >= 0 && index + 1 < allMonsters.size) allMonsters[index + 1]
+            else {
+                // Сброс первого монстра с увеличением сложности (повышаем HP и награду)
+                val first = allMonsters.firstOrNull()
+                first?.let {
+                    it.maxHp = (it.maxHp * 1.2).toInt()
+                    it.currentHp = it.maxHp
+                    it.rewardCol = (it.rewardCol * 1.2).toInt()
+                    it.rewardExp = (it.rewardExp * 1.2).toInt()
+                    repository.updateMonster(it)
+                }
+                first
+            }
+        }
+        _currentMonster.postValue(nextMonster)
     }
 
     private suspend fun checkLevelUp(player: Player) {
