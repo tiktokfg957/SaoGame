@@ -1,6 +1,7 @@
 package com.example.saoclicker.ui.main
 
 import android.animation.ValueAnimator
+import android.graphics.Color
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
@@ -14,6 +15,7 @@ import com.example.saoclicker.databinding.ActivityMainBinding
 import com.example.saoclicker.ui.achievements.AchievementsActivity
 import com.example.saoclicker.ui.shop.ShopActivity
 import com.example.saoclicker.ui.stats.StatsActivity
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -23,6 +25,7 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by viewModels {
         MainViewModel.MainViewModelFactory((application as SAOClickerApplication).repository)
     }
+    private var autoClickJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,16 +55,9 @@ class MainActivity : AppCompatActivity() {
             binding.tvDamage.text = getString(R.string.damage, viewModel.calculateDamage())
         }
 
-        // Атака по нажатию на FAB
-        binding.fabAttack.setOnClickListener {
+        binding.root.setOnClickListener { event ->
             viewModel.performClick()
-            showClickEffect(binding.fabAttack.x, binding.fabAttack.y)
-        }
-
-        // Также можно оставить клик по всему экрану (опционально)
-        binding.root.setOnClickListener {
-            viewModel.performClick()
-            showClickEffect(it.x, it.y)
+            showClickEffect(event.x, event.y)
         }
 
         binding.btnShop.setOnClickListener {
@@ -73,36 +69,56 @@ class MainActivity : AppCompatActivity() {
         binding.btnAchievements.setOnClickListener {
             startActivity(android.content.Intent(this, AchievementsActivity::class.java))
         }
+    }
 
-        lifecycleScope.launch {
-            while (true) {
-                delay(1000)
+    override fun onResume() {
+        super.onResume()
+        startAutoClicker()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        stopAutoClicker()
+    }
+
+    private fun startAutoClicker() {
+        autoClickJob?.cancel()
+        autoClickJob = lifecycleScope.launch {
+            while (isActive) {
+                delay(1000L)
                 viewModel.performAutoClick()
             }
         }
     }
 
-    private fun showClickEffect(x: Float, y: Float) {
-        val damageText = TextView(this)
-        damageText.text = "+${viewModel.calculateDamage()}"
-        damageText.setTextColor(resources.getColor(R.color.white, null))
-        damageText.textSize = 24f
-        damageText.x = x
-        damageText.y = y
-        (window.decorView as ViewGroup).addView(damageText)
+    private fun stopAutoClicker() {
+        autoClickJob?.cancel()
+        autoClickJob = null
+    }
 
-        val animator = ValueAnimator.ofFloat(1f, 0f).apply {
-            duration = 800
-            addUpdateListener {
-                damageText.alpha = it.animatedValue as Float
-                damageText.translationY -= 50 * it.animatedFraction
-            }
+    private fun showClickEffect(x: Float, y: Float) {
+        val damageText = TextView(this).apply {
+            text = "+${viewModel.calculateDamage()}"
+            setTextColor(Color.YELLOW)
+            textSize = 20f
+            setPadding(16, 8, 16, 8)
+            setBackgroundResource(R.drawable.bg_click_effect)
         }
-        animator.start()
-        animator.addListener(object : android.animation.AnimatorListenerAdapter() {
-            override fun onAnimationEnd(animation: android.animation.Animator) {
+        (window.decorView as ViewGroup).addView(damageText, ViewGroup.LayoutParams(
+            ViewGroup.LayoutParams.WRAP_CONTENT,
+            ViewGroup.LayoutParams.WRAP_CONTENT
+        ).apply {
+            this.x = x - 50
+            this.y = y - 100
+        })
+
+        damageText.animate()
+            .translationY(-100f)
+            .alpha(0f)
+            .setDuration(800)
+            .withEndAction {
                 (damageText.parent as? ViewGroup)?.removeView(damageText)
             }
-        })
+            .start()
     }
 }
