@@ -9,7 +9,7 @@ data class Achievement(
     val id: Int = 0,
     var title: String,
     var description: String,
-    var requirementType: String, // "kill", "damage", "upgrade", "stat"
+    var requirementType: String, // "kill", "stat_strength" и т.д.
     var requirementValue: Int,
     var currentProgress: Int = 0,
     var isCompleted: Boolean = false,
