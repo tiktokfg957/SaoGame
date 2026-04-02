@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.saoclicker.data.model.Monster
 import com.example.saoclicker.data.model.Player
 import com.example.saoclicker.data.repository.GameRepository
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Random
 
@@ -25,7 +25,6 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            // Следим за списком монстров и выбираем активного
             repository.getAllMonsters().collect { monsters ->
                 val active = monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
                 _currentMonster.postValue(active)
@@ -33,7 +32,6 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
         }
 
         viewModelScope.launch {
-            // Следим за апгрейдами для оружия
             repository.getAllUpgrades().collect { upgrades ->
                 val weapon = upgrades.find { it.effect == "weapon" }
                 _weaponBonus.postValue(weapon?.effectValue ?: 0)
@@ -57,18 +55,13 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
             val damage = calculateDamage()
             val newHp = monster.currentHp - damage
             if (newHp <= 0) {
-                // убийство монстра
                 monster.currentHp = 0
                 repository.updateMonster(monster)
-                // награда
                 player.col += monster.rewardCol
                 player.experience += monster.rewardExp
-                // проверка уровня
                 checkLevelUp(player)
                 repository.updatePlayer(player)
-                // Проверка достижений
                 checkAchievements("kill", 1)
-                // Переключение на следующего монстра (он автоматически подхватится из Flow)
             } else {
                 monster.currentHp = newHp
                 repository.updateMonster(monster)
@@ -115,7 +108,7 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
     }
 
     private suspend fun checkAchievements(type: String, value: Int) {
-        val achievements = repository.getAllAchievements().asLiveData().value ?: return
+        val achievements = repository.getAllAchievements().first()
         achievements.filter { !it.isCompleted && it.requirementType == type }.forEach { ach ->
             val newProgress = ach.currentProgress + value
             if (newProgress >= ach.requirementValue) {
