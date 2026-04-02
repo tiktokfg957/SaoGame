@@ -9,7 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.saoclicker.data.model.Monster
 import com.example.saoclicker.data.model.Player
 import com.example.saoclicker.data.repository.GameRepository
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.util.Random
 
@@ -17,31 +17,31 @@ class MainViewModel(private val repository: GameRepository) : ViewModel() {
 
     val player: LiveData<Player> = repository.getPlayer().asLiveData()
 
-    private val _currentMonster = MutableLiveData<Monster?>()
-    val currentMonster: LiveData<Monster?> = _currentMonster
+    private val _currentMonster = MutableStateFlow<Monster?>(null)
+    val currentMonster: StateFlow<Monster?> = _currentMonster.asStateFlow()
 
-    private val _weaponBonus = MutableLiveData(0)
-    val weaponBonus: LiveData<Int> = _weaponBonus
+    private val _weaponBonus = MutableStateFlow(0)
+    val weaponBonus: StateFlow<Int> = _weaponBonus.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.getAllMonsters().collect { monsters ->
                 val active = monsters.firstOrNull { it.currentHp > 0 } ?: monsters.firstOrNull()
-                _currentMonster.postValue(active)
+                _currentMonster.value = active
             }
         }
 
         viewModelScope.launch {
             repository.getAllUpgrades().collect { upgrades ->
                 val weapon = upgrades.find { it.effect == "weapon" }
-                _weaponBonus.postValue(weapon?.effectValue ?: 0)
+                _weaponBonus.value = weapon?.effectValue ?: 0
             }
         }
     }
 
     fun calculateDamage(): Int {
         val player = player.value ?: return 1
-        val bonus = _weaponBonus.value ?: 0
+        val bonus = _weaponBonus.value
         val critChance = (player.agility / 10).coerceAtMost(50)
         val isCrit = Random().nextInt(100) < critChance
         val baseDamage = player.strength + bonus
