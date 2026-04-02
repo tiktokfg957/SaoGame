@@ -22,27 +22,20 @@ class ShopViewModel(private val repository: GameRepository) : ViewModel() {
         viewModelScope.launch {
             val currentPlayer = player.value ?: return@launch
             if (currentPlayer.col >= upgrade.currentPrice) {
-                // списываем кол
                 currentPlayer.col -= upgrade.currentPrice
                 repository.updatePlayer(currentPlayer)
 
-                // увеличиваем ownedCount и применяем эффект
                 upgrade.ownedCount += 1
-                // обновляем цену (например, растёт на 20%)
                 upgrade.currentPrice = (upgrade.basePrice * (1 + 0.2 * upgrade.ownedCount)).toInt()
                 repository.updateUpgrade(upgrade)
 
-                // применяем эффект (увеличиваем соответствующую характеристику или добавляем бонус)
+                // Применяем эффект (для автокликера увеличиваем скорость атаки)
                 when (upgrade.effect) {
-                    "weapon" -> {
-                        // weapon bonus уже обрабатывается в MainViewModel через upgrade.effectValue
-                        // но здесь ничего не делаем, так как бонус читается из базы
-                    }
                     "autoClicker" -> {
-                        // attackSpeed увеличивается на effectValue за каждую покупку
                         currentPlayer.attackSpeed += upgrade.effectValue
                         repository.updatePlayer(currentPlayer)
                     }
+                    // weapon bonus обрабатывается автоматически через Flow в MainViewModel
                 }
                 _toastMessage.value = "Куплено: ${upgrade.name}"
             } else {
